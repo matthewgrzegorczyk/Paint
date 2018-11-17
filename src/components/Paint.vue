@@ -1,8 +1,9 @@
 <template>
     <div class="paint-container">
         <div class="tool-bar">
-            <input type="color" name="color" v-bind:value="color" />
-            <input type="range" name="line_width" v-bind:value="line_width" />
+            <input type="text" name="color" v-model="color" />
+            <input type="color" name="color" v-model="color" />
+            <input type="range" name="line_width" v-model="line_width" min="1" max="10" step="1" />
             <ul class="shapes">
                 <li v-for="tool in tools" v-bind:key="tool.id" v-on:click="selectTool" v-bind:data-tool="tool.name">
                     {{ tool.display_name }}
@@ -10,7 +11,7 @@
             </ul>
         </div>
         <div class="canvas-container">
-            <canvas height="500" width="500" id="main-canvas" class="main-canvas"></canvas>
+            <canvas height="500" width="500" id="main-canvas" class="main-canvas" ref="mainCanvas"></canvas>
             <canvas height="500" width="500" id="helper-canvas" class="helper-canvas" v-on:mousemove="onMouseMove" v-on:click="onMouseClick"></canvas>
         </div>
         <div class="cursor-position">
@@ -21,13 +22,17 @@
 
 
 <script>
+/*
+TODO:
+1. Rysowanie obiektów poprzez wpisanie parametrów w pola tekstowe.
+2. Przesuwanie oraz zmiana rozmiaru kszałtów.
+*/
 export default {
   name: "paint",
   data: function() {
     return {
       activeTool: null,
       isDrawing: false,
-      mainCanvas: document.getElementById('main-canvas'),
       drawing: {
         points: []
       },
@@ -39,13 +44,13 @@ export default {
       mouse: {
         position: {
           x: 0,
-          y: 0,
+          y: 0
         }
       },
-      color: '#FF00FF',
+      color: "#FF00FF",
       line_width: 2,
       history: []
-    }
+    };
   },
   methods: {
     selectTool: function(event) {
@@ -63,23 +68,37 @@ export default {
       const activeTool = this.getActiveTool();
       const canvas = event.target;
       const ctx = canvas.getContext("2d");
+      ctx.lineWidth = this.line_width;
       ctx.strokeStyle = this.color;
+      ctx.fillStyle = this.color;
       clearCanvas(canvas);
 
       if (this.isDrawing) {
         switch (activeTool) {
           case "line":
             if (this.drawing.points.length >= 1) {
-              const line = drawLine(this.drawing.points[0], this.mouse.position);
+              const line = drawLine(
+                this.drawing.points[0],
+                this.mouse.position
+              );
               ctx.stroke(line);
             }
             // console.log(this.drawing.points[0], this.mouse.position);
             break;
           case "elipsis":
-            console.log(`Let's start drawing an elipsis`);
+            const radius = distance(
+              this.drawing.points[0],
+              this.mouse.position
+            );
+            drawCircle(ctx, this.drawing.points[0], radius, "stroke");
             break;
           case "rect":
-            console.log(`Let's draw some rectangulars.`);
+            drawRect(
+              ctx,
+              this.drawing.points[0],
+              this.mouse.position,
+              "stroke"
+            );
             break;
           default:
             break;
@@ -90,8 +109,10 @@ export default {
       const position = calculatePosition(event);
 
       const activeTool = this.getActiveTool();
-      const canvas = event.target;
-      const ctx = canvas.getContext("2d");
+      const mainCtx = this.$refs.mainCanvas.getContext("2d");
+      mainCtx.lineWidth = this.line_width;
+      mainCtx.strokeStyle = this.color;
+      mainCtx.fillStyle = this.color;
 
       if (activeTool !== null) {
         this.isDrawing = true;
@@ -102,22 +123,46 @@ export default {
       switch (activeTool) {
         case "line":
           this.drawing.points.push(position); // Set starting point.
-          
+
           if (this.drawing.points.length >= 2) {
-            const line = drawLine(this.drawing.points[0], this.drawing.points[1]);
-            const mainCtx = this.mainCanvas.getContext('2d');
-            mainCtx.strokeStyle = this.color;
+            const line = drawLine(
+              this.drawing.points[0],
+              this.drawing.points[1]
+            );
             mainCtx.stroke(line);
-            console.log(this.drawing.points, line);
 
             this.drawing.points = [];
+            this.isDrawing = false;
           }
           break;
         case "elipsis":
-          console.log(`Let's start drawing an elipsis`);
+          this.drawing.points.push(position);
+
+          if (this.drawing.points.length >= 2) {
+            const radius = distance(
+              this.drawing.points[0],
+              this.drawing.points[1]
+            );
+            drawCircle(mainCtx, this.drawing.points[0], radius, "fill");
+
+            this.drawing.points = [];
+            this.isDrawing = false;
+          }
           break;
         case "rect":
-          console.log(`Let's draw some rectangulars.`);
+          this.drawing.points.push(position);
+
+          if (this.drawing.points.length >= 2) {
+            drawRect(
+              mainCtx,
+              this.drawing.points[0],
+              this.drawing.points[1],
+              "fill"
+            );
+
+            this.drawing.points = [];
+            this.isDrawing = false;
+          }
           break;
         default:
           break;
@@ -125,6 +170,10 @@ export default {
     },
     getActiveTool: function() {
       return this.activeTool ? this.activeTool.dataset.tool : null;
+    },
+    drawMe: function() {
+      const ctx = this.$refs.mainCanvas.getContext("2d");
+      ctx.stroke(drawLine({ x: 0, y: 0 }, { x: 50, y: 50 }));
     }
   }
 };
@@ -155,10 +204,13 @@ function drawLine(a, b) {
 }
 
 function drawRect(ctx, a, b, mode) {
+  const width = b.x - a.x;
+  const height = b.y - a.y;
+
   if (mode === "fill") {
-    ctx.fillRect(a.x, a.y, b.x, b.y);
+    ctx.fillRect(a.x, a.y, width, height);
   } else if (mode === "stroke") {
-    ctx.strokeRect(a.x, a.y, b.x, b.y);
+    ctx.strokeRect(a.x, a.y, width, height);
   }
 }
 
