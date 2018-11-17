@@ -1,18 +1,19 @@
 <template>
   <div id="app">
     <Paint />
+    <Converter />
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
 import Paint from './components/Paint.vue'
+import Converter from './components/Converter.vue'
 
 export default {
   name: 'app',
   components: {
-    HelloWorld,
-    Paint
+    Paint,
+    Converter
   }
 }
 </script>
