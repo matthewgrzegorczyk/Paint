@@ -58,12 +58,16 @@ function rgb2cmyk(rgb) {
     g: rgb.g / 255,
     b: rgb.b / 255
   };
-  const k = parseFloat(1 - Math.max(...Object.values(scaled))).toFixed(2);
+  const k = 1 - Math.max(...Object.values(scaled));
+  const c = (1 - scaled.r - k) / (1 - k)
+  const m = (1 - scaled.g - k) / (1 - k)
+  const y = (1 - scaled.b - k) / (1 - k)
+  
   return {
-    k: k,
-    c: parseFloat((1 - scaled.r - k) / (1 - k)).toFixed(2),
-    m: parseFloat((1 - scaled.g - k) / (1 - k)).toFixed(2),
-    y: parseFloat((1 - scaled.b - k) / (1 - k)).toFixed(2)
+    k: parseFloat(k).toFixed(2),
+    c: c ? parseFloat(c).toFixed(2) : 0,
+    m: m ? parseFloat(m).toFixed(2) : 0,
+    y: y ? parseFloat(y).toFixed(2) : 0,
   };
 }
 
@@ -77,11 +81,5 @@ function cmyk2rgb(cmyk) {
 }
 </script>
 
-<style lang="scss" scoped>
-input {
-  padding: 0.5rem;
-  margin: 0.5rem;
-  outline: 0;
-  border: 1px solid #000;
-}
+<style lang="scss">
 </style>
