@@ -1,84 +1,115 @@
 <template>
-    <div class="paint-container">
-        <div class="tool-bar">
-            <ul class="tabs">
-              <li @click="setActiveTab" :class="{ active: tabActive === 'basic' }" data-tab-name="basic">Basic</li>
-              <li @click="setActiveTab" :class="{ active: tabActive === 'misc' }" data-tab-name="misc">Misc</li>
-              <li @click="setActiveTab" :class="{ active: tabActive === 'converter' }" data-tab-name="converter">Color Converter</li>
-              <li @click="setActiveTab" :class="{ active: tabActive === 'image' }" data-tab-name="image">Image</li>
+  <div class="paint-container">
+    <div class="tool-bar">
+      <ul class="tabs">
+        <li
+          @click="setActiveTab"
+          :class="{ active: tabActive === 'basic' }"
+          data-tab-name="basic"
+        >Basic</li>
+        <li
+          @click="setActiveTab"
+          :class="{ active: tabActive === 'misc' }"
+          data-tab-name="misc"
+        >Misc</li>
+        <li
+          @click="setActiveTab"
+          :class="{ active: tabActive === 'converter' }"
+          data-tab-name="converter"
+        >Color Converter</li>
+        <li
+          @click="setActiveTab"
+          :class="{ active: tabActive === 'image' }"
+          data-tab-name="image"
+        >Image</li>
+      </ul>
+      <div class="tabs-content">
+        <li id="tab-basic" :class="{ active: tabActive === 'basic' }">
+          <div class="tab-content">
+            <input type="text" name="color" v-model="color">
+            <input type="color" name="color" v-model="color">
+            <input type="range" name="line_width" v-model="line_width" min="1" max="10" step="1">
+            <ul v-if="tools.length" class="shapes">
+              <li
+                v-for="tool in tools"
+                v-bind:key="tool.id"
+                v-on:click="selectTool"
+                v-bind:data-tool="tool.name"
+              >{{ tool.display_name }}</li>
             </ul>
-            <div class="tabs-content">
-              <li id="tab-basic" :class="{ active: tabActive === 'basic' }">
-                <div class="tab-content">
-                  <input type="text" name="color" v-model="color" />
-                  <input type="color" name="color" v-model="color" />
-                  <input type="range" name="line_width" v-model="line_width" min="1" max="10" step="1" />
-                  <ul v-if="tools.length" class="shapes">
-                      <li v-for="tool in tools" v-bind:key="tool.id" v-on:click="selectTool" v-bind:data-tool="tool.name">
-                          {{ tool.display_name }}
-                      </li>
-                  </ul>
-                </div>
-              </li>
-              <li id="tab-misc" :class="{ active: tabActive === 'misc' }">
-                <div class="tab-content">
-                  <div class="lineParameters">
-                  <input type="number" placeholder="lineAx" v-model="lineAx">
-                  <input type="number" placeholder="lineAy" v-model="lineAy">
-                  <input type="number" placeholder="lineBx" v-model="lineBx">
-                  <input type="number" placeholder="lineBy" v-model="lineBy">
-                  <button @click="drawLineUsingParams">Draw Line</button>
-                </div>
-                <div class="circleParameters">
-                  <input type="number" v-model="circleCenter.x">
-                  <input type="number" v-model="circleCenter.y">
-                  <input type="number" v-model="circleRadius">
-                  <button @click="drawCircleUsingParams">Draw Circle</button>
-                </div>
-                <div class="rectangleParameters">
-                  <input type="number" placeholder="rectX" v-model="rectX">
-                  <input type="number" placeholder="rectY" v-model="rectY">
-                  <input type="number" placeholder="rectWidth" v-model="rectWidth">
-                  <input type="number" placeholder="rectHeight" v-model="rectHeight">
-                  <button @click="drawRectUsingParams">Draw Rect</button>
-                </div>
-               </div>
-              </li>
-              <li :class="{ active: tabActive === 'converter' }">
-                <div class="tab-content">
-                  <Converter />
-                </div>
-              </li>
-              <li :class="{ active: tabActive === 'image' }">
-                <div class="tab-content">
-                  <form action="" method="post" enctype="multipart/form-data">
-                    <input type="file" name="image" @change="filesChange">
-                  </form>
-                  <div class="actions">
-                    <button @click="smoothImage">Filtr wygladzajacy (usredniajacy)</button>
-                    <button>Filtr medianowy</button>
-                    <button>Filtr wykrywania krawedzi (sobel)</button>
-                    <button>Dylatacja</button>
-                    <button>Erozja</button>
-                    <button @click="imageDraw">Image</button>
-                  </div>
-                  <div class="image-preview">
-                    <img ref="preview" @load="onPreviewLoad">
-                  </div>
-                </div>
-              </li>
+          </div>
+        </li>
+        <li id="tab-misc" :class="{ active: tabActive === 'misc' }">
+          <div class="tab-content">
+            <div class="lineParameters">
+              <input type="number" placeholder="lineAx" v-model="lineAx">
+              <input type="number" placeholder="lineAy" v-model="lineAy">
+              <input type="number" placeholder="lineBx" v-model="lineBx">
+              <input type="number" placeholder="lineBy" v-model="lineBy">
+              <button @click="drawLineUsingParams">Draw Line</button>
             </div>
-            <button @click="clearCanvas">Clear Canvas</button>
-            <!-- <button @click="imageDraw">Draw Image</button> -->
-        </div>
-        <div class="canvas-container">
-            <canvas v-bind:height="canvasHeight" v-bind:width="canvasWidth" id="main-canvas" class="main-canvas" ref="mainCanvas"></canvas>
-            <canvas v-bind:height="canvasHeight" v-bind:width="canvasWidth" id="helper-canvas" class="helper-canvas" ref="helperCanvas" v-on:mousemove="onMouseMove" v-on:click="onMouseClick"></canvas>
-        </div>
-        <div class="cursor-position">
-            Mouse position X: {{ mouse.position.x }} Y: {{ mouse.position.y }}
-        </div>
+            <div class="circleParameters">
+              <input type="number" v-model="circleCenter.x">
+              <input type="number" v-model="circleCenter.y">
+              <input type="number" v-model="circleRadius">
+              <button @click="drawCircleUsingParams">Draw Circle</button>
+            </div>
+            <div class="rectangleParameters">
+              <input type="number" placeholder="rectX" v-model="rectX">
+              <input type="number" placeholder="rectY" v-model="rectY">
+              <input type="number" placeholder="rectWidth" v-model="rectWidth">
+              <input type="number" placeholder="rectHeight" v-model="rectHeight">
+              <button @click="drawRectUsingParams">Draw Rect</button>
+            </div>
+          </div>
+        </li>
+        <li :class="{ active: tabActive === 'converter' }">
+          <div class="tab-content">
+            <Converter/>
+          </div>
+        </li>
+        <li :class="{ active: tabActive === 'image' }">
+          <div class="tab-content">
+            <form action method="post" enctype="multipart/form-data">
+              <input type="file" name="image" @change="filesChange">
+            </form>
+            <div class="actions">
+              <button @click="smoothImage">Filtr wygladzajacy (usredniajacy)</button>
+              <button>Filtr medianowy</button>
+              <button>Filtr wykrywania krawedzi (sobel)</button>
+              <button>Dylatacja</button>
+              <button>Erozja</button>
+              <button @click="imageDraw">Image</button>
+            </div>
+          </div>
+        </li>
+      </div>
+      <button @click="clearCanvas">Clear Canvas</button>
+      <!-- <button @click="imageDraw">Draw Image</button> -->
     </div>
+    <div class="image-preview">
+      <img ref="preview" @load="onPreviewLoad">
+    </div>
+    <div class="canvas-container">
+      <canvas
+        v-bind:height="canvasHeight"
+        v-bind:width="canvasWidth"
+        id="main-canvas"
+        class="main-canvas"
+        ref="mainCanvas"
+      ></canvas>
+      <canvas
+        v-bind:height="canvasHeight"
+        v-bind:width="canvasWidth"
+        id="helper-canvas"
+        class="helper-canvas"
+        ref="helperCanvas"
+        v-on:mousemove="onMouseMove"
+        v-on:click="onMouseClick"
+      ></canvas>
+    </div>
+    <div class="cursor-position">Mouse position X: {{ mouse.position.x }} Y: {{ mouse.position.y }}</div>
+  </div>
 </template>
 
 
@@ -89,8 +120,9 @@ Przesuwanie oraz zmiana rozmiaru kszałtów.
 */
 
 import Converter from "./Converter.vue";
-import lena_img from "./../assets/len_full.jpg";
-import _ from 'lodash';
+import lena_full from "./../assets/len_full.jpg";
+import lena_std from "./../assets/len_std.jpg";
+import _ from "lodash";
 
 export default {
   name: "paint",
@@ -137,7 +169,7 @@ export default {
       rectX: 0,
       rectY: 0,
       rectWidth: 0,
-      rectHeight: 0,
+      rectHeight: 0
     };
   },
   methods: {
@@ -149,25 +181,93 @@ export default {
         this.canvasWidth,
         this.canvasHeight
       );
-      let data = _.chunk(imgData.data, 4);
-      console.log(data);
+      // console.log(imgData);
 
-      // for (let y = 0; y <= this.canvasHeight; y++) {
-      //   for (let x = 0; x <= this.canvasWidth; x++) {
-      //     let pixelData = getPixelDataAt(imgData, x, y);
+      // console.log(_.chunk(imgData.data, 4));
 
-      //     if (x==2) {
-      //       break;
-      //     }
-      //   }
-      // }
+      // Parametry filtru wygladzajacego
+      
+      const masks = {
+        smooth: [
+          1, 1, 1,
+          1, 1, 1,
+          1, 1, 1,
+        ],
+        sobel: [
+          -1, -2, -1,
+          0, 0, 0,
+          1, 2, 1,
+        ],
+      };
 
-      const finalImageData = new ImageData(
-        Uint8ClampedArray.from(_.flatten(data)),
-        this.canvasWidth,
-        this.canvasHeight
-      );
-      mainCtx.putImageData(finalImageData, 0, 0);
+      const mask = masks.smooth;
+      const maskSize = Math.sqrt(mask.length);
+
+      const skip = Math.floor(maskSize / 2);
+
+      for (let y = 0; y < this.canvasHeight; y++) {
+        // Pomijanie krawedzi maski
+        if (y < skip || y > this.canvasHeight - skip) {
+          continue;
+        }
+        for (let x = 0; x < this.canvasWidth; x++) {
+          // Pomijanie krawedzi maski
+          if (x < skip || x > this.canvasWidth - skip) {
+            continue;
+          }
+
+          // Maska
+          let pixels = [];
+          for (let i = -skip; i <= skip; i++) {
+            for (let j = -skip; j <= skip; j++) {
+              pixels.push(getPixelDataAt(imgData, x + j, y + i));
+            }
+          }
+
+          
+          const mid = Math.floor(pixels.length / 2);
+
+          let pixelColor = [0, 0, 0, 255];
+
+          // Filtr usredniajacy
+          pixels.forEach((pixel, index) => {
+            const weight = mask[index] / mask.length;
+            pixelColor[0] += adjustPixelColor(pixel[0], weight);
+            pixelColor[1] += adjustPixelColor(pixel[1], weight);
+            pixelColor[2] += adjustPixelColor(pixel[2], weight);
+          });
+          // console.log(pixelColor);
+
+          pixels[mid] = pixelColor;
+
+
+          // Filtr medianowy.
+          // const pixelsRed = pixels.sort((a, b) => {
+          //   return a[0] - b[0];
+          // });
+
+          // const pixelsGreen = pixels.sort((a, b) => {
+          //   return a[1] - b[1];
+          // });
+
+          // const pixelsBlue = pixels.sort((a, b) => {
+          //   return a[2] - b[2];
+          // });
+
+          // console.log(pixelsRed, pixelsGreen, pixelsBlue);
+
+          // let pixelData = getPixelDataAt(imgData, x, y);
+
+          // pixelData[0] = adjustPixelColor(pixelData[0], 1);
+          // pixelData[1] = adjustPixelColor(pixelData[1], 1);
+          // pixelData[2] = adjustPixelColor(pixelData[2], 1);
+
+          // setPixelDataAt(pixelData, imgData, x, y);
+          setPixelDataAt(pixels[mid], imgData, x, y);
+        }
+      }
+
+      mainCtx.putImageData(imgData, 0, 0);
     },
     setActiveTab: function(event) {
       this.tabActive = event.target.dataset.tabName;
@@ -178,7 +278,7 @@ export default {
       const reader = new FileReader();
 
       reader.addEventListener(
-        'load',
+        "load",
         () => {
           this.loadImage(reader.result);
         },
@@ -199,7 +299,7 @@ export default {
       this.resizeCanvas(imgWidth, imgHeight);
 
       const mainCtx = this.$refs.mainCanvas.getContext("2d");
-      
+
       mainCtx.drawImage(this.$refs.preview, 0, 0, imgWidth, imgHeight);
     },
     resizeCanvas: function(width, height) {
@@ -332,7 +432,7 @@ export default {
       clearCanvas(this.$refs.mainCanvas);
     },
     imageDraw: function() {
-      this.loadImage(lena_img);
+      this.loadImage(lena_std);
     },
     drawLineUsingParams: function() {
       const line = drawLine(
@@ -431,17 +531,40 @@ function getPixelData(imgData, offset = 0) {
 }
 
 function getPixelDataAt(imgData, x, y) {
-  const offset = x * 4 + y * 4;
+  const offset = calculatePixelOffset(imgData.width, imgData.height, x, y);
   return getPixelData(imgData.data, offset);
 }
 
-function setPixelData(imgData, offset = 0) {
-  return imgData.splice.apply(this, [offset, 4].concat(Array.slice.call(arguments, 1)));
+function setPixelData(pixelData, imgData, offset = 0) {
+  try {
+    imgData.data.set(pixelData, offset);
+  }
+  catch(err) {
+    console.log(offset);
+    return;
+  }
 }
 
-function setPixelDataAt(imgData, x, y) {
-  const offset = x * 4 + y * 4;
-  return setPixelData(imgData.data, offset);
+function setPixelDataAt(pixelData, imgData, x, y) {
+  const offset = calculatePixelOffset(imgData.width, imgData.height, x, y);
+  return setPixelData(pixelData, imgData, offset);
+}
+
+function calculatePixelOffset(width, height, x, y) {
+  return (x + y * width) * 4;
+}
+
+function adjustPixelColor(pixelValue, value) {
+  pixelValue *= value;
+
+  if (pixelValue < 0) {
+    return 0;
+  }
+  if (pixelValue > 255) {
+    return 255;
+  }
+
+  return pixelValue;
 }
 </script>
 
@@ -484,8 +607,8 @@ function setPixelDataAt(imgData, x, y) {
 }
 
 .image-preview {
-  max-height: 300px;
-  max-width: 300px;
+  // max-height: 350px;
+  // max-width: 300px;
   overflow: hidden;
   border: 1px solid #000;
   display: inline-flex;
