@@ -22,6 +22,11 @@
           :class="{ active: tabActive === 'image' }"
           data-tab-name="image"
         >Image</li>
+        <li
+          @click="setActiveTab"
+          :class="{ active: tabActive === 'bezier' }"
+          data-tab-name="bezier"
+        >Bezier</li>
       </ul>
       <div class="tabs-content">
         <li id="tab-basic" :class="{ active: tabActive === 'basic' }">
@@ -83,6 +88,19 @@
             </div>
           </div>
         </li>
+        <li :class="{ active: tabActive === 'bezier' }">
+          <div class="tab-content">
+            <input placeholder="P0.X" type="text" v-model="bp0x">
+            <input placeholder="P0.Y" type="text" v-model="bp0y">
+            <input placeholder="P1.X" type="text" v-model="bp1x">
+            <input placeholder="P1.Y" type="text" v-model="bp1y">
+            <input placeholder="P2.X" type="text" v-model="bp2x">
+            <input placeholder="P2.Y" type="text" v-model="bp2y">
+            <input placeholder="P3.X" type="text" v-model="bp3x">
+            <input placeholder="P3.Y" type="text" v-model="bp3y">
+            <button @click="drawBezier">Draw bezier</button>
+          </div>
+        </li>
       </div>
       <button @click="clearCanvas">Clear Canvas</button>
       <!-- <button @click="imageDraw">Draw Image</button> -->
@@ -142,7 +160,8 @@ export default {
       tools: [
         { id: 1, name: "line", display_name: "Line" },
         { id: 2, name: "elipsis", display_name: "Elipsis" },
-        { id: 3, name: "rect", display_name: "Rectangular" }
+        { id: 3, name: "rect", display_name: "Rectangular" },
+        { id: 4, name: "bezier", display_name: "Bezier" },
       ],
       mouse: {
         position: {
@@ -169,7 +188,15 @@ export default {
       rectX: 0,
       rectY: 0,
       rectWidth: 0,
-      rectHeight: 0
+      rectHeight: 0,
+      bp0x: 0,
+      bp0y: 0,
+      bp1x: 0,
+      bp1y: 0,
+      bp2x: 0,
+      bp2y: 0,
+      bp3x: 0,
+      bp3y: 0,
     };
   },
   methods: {
@@ -181,7 +208,9 @@ export default {
         this.canvasWidth,
         this.canvasHeight
       );
-      // console.log(imgData);
+
+
+      console.log(imgData);
 
       // console.log(_.chunk(imgData.data, 4));
 
@@ -200,7 +229,7 @@ export default {
         ],
       };
 
-      const mask = masks.smooth;
+      const mask = masks.sobel;
       const maskSize = Math.sqrt(mask.length);
 
       const skip = Math.floor(maskSize / 2);
@@ -357,6 +386,11 @@ export default {
               "stroke"
             );
             break;
+          case "bezier":
+            if (mainCtx.isPointInPath(this.mouse.position.x, this.mouse.position.y)) {
+              console.log('Bajzel');
+            }
+            break;
           default:
             break;
         }
@@ -421,6 +455,29 @@ export default {
             this.isDrawing = false;
           }
           break;
+        case "bezier":
+          drawBezier(mainCtx);
+
+          if (this.drawing.points.length >= 2) {
+            drawBezier(
+              mainCtx,
+              this.drawing.points[0],
+              this.drawing.points[1],
+              "stroke"
+            )
+            const bezierHistory = {
+              type: "bezier",
+              params: {
+                t: 0.5,
+                p0: this.drawing.points[0],
+                p3: this.drawing.points[1],
+              }
+            }
+            this.history.push(
+            
+            )
+          }
+          break;
         default:
           break;
       }
@@ -472,6 +529,16 @@ export default {
         { x: this.rectX + this.rectWidth, y: this.rectY + this.rectWidth },
         "fill"
       );
+    },
+    drawBezier: function() {
+      const p0 = {x: this.bp0x, y: this.bp0y},
+      p1 = {x: this.bp1x, y: this.bp1y},
+      p2 = {x: this.bp2x, y: this.bp2y},
+      p3 = {x: this.bp3x, y: this.bp3y};
+
+      const mainCtx = this.$refs.mainCanvas.getContext("2d");
+
+      drawBezier(mainCtx, p0, p1, p2, p3);
     }
   }
 };
@@ -565,6 +632,36 @@ function adjustPixelColor(pixelValue, value) {
   }
 
   return pixelValue;
+}
+
+function bezierPoint(t, p0, p1, p2, p3) {
+  const cX = 3 * (p1.x - p0.x),
+      bX = 3 * (p2.x - p1.x) - cX,
+      aX = p3.x - p0.x - cX - bX;
+
+  const cY = 3 * (p1.y - p0.y),
+      bY = 3 * (p2.y - p1.y) - cY,
+      aY = p3.y - p0.y - cY - bY;
+
+  const x = (aX * Math.pow(t, 3)) + (bX * Math.pow(t, 2)) + (cX * t) + p0.x;
+  const y = (aY * Math.pow(t, 3)) + (bY * Math.pow(t, 2)) + (cY * t) + p0.y;
+
+  return {
+    x: x,
+    y: y,
+  }
+}
+
+function drawBezier(ctx, p0, p1, p2, p3) {
+  const accuracy = 0.01;
+
+  ctx.moveTo(p0.x, p0.y);
+  for (var i=0; i<1; i+=accuracy){
+     var p = bezierPoint(i, p0, p1, p2, p3);
+     ctx.lineTo(p.x, p.y);
+  }
+
+  ctx.stroke()
 }
 </script>
 
