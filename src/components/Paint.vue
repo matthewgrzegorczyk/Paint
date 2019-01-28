@@ -124,6 +124,7 @@
         ref="helperCanvas"
         v-on:mousemove="onMouseMove"
         v-on:click="onMouseClick"
+        v-on:contextmenu="getContextMenu"
       ></canvas>
     </div>
     <div class="cursor-position">Mouse position X: {{ mouse.position.x }} Y: {{ mouse.position.y }}</div>
@@ -140,6 +141,7 @@ Przesuwanie oraz zmiana rozmiaru kszałtów.
 import Converter from "./Converter.vue";
 import lena_full from "./../assets/len_full.jpg";
 import lena_std from "./../assets/len_std.jpg";
+import { Bezier, Circle } from "./../helpers";
 import _ from "lodash";
 
 export default {
@@ -158,6 +160,7 @@ export default {
         points: []
       },
       tools: [
+        { id: 0, name: "select", display_name: "Select" },
         { id: 1, name: "line", display_name: "Line" },
         { id: 2, name: "elipsis", display_name: "Elipsis" },
         { id: 3, name: "rect", display_name: "Rectangular" },
@@ -200,6 +203,9 @@ export default {
     };
   },
   methods: {
+    getContextMenu: function(event) {
+      event.preventDefault();
+    },
     smoothImage: function(event) {
       const mainCtx = this.$refs.mainCanvas.getContext("2d");
       const imgData = mainCtx.getImageData(
@@ -344,6 +350,17 @@ export default {
 
       this.drawing.points = [];
     },
+    redrawHistory() {
+      const mainCtx = this.$refs.mainCanvas.getContext('2d');
+      const helperCtx = this.$refs.helperCanvas.getContext('2d');
+      this.clearCanvas()
+
+      let deselectedHistory = this.history.filter((entry) => entry.selected === false);
+      for (let entry of deselectedHistory.values()) {
+        let path = entry.getPath();
+        mainCtx.stroke(path);
+      }
+    },
     onMouseMove: function(event) {
       this.mouse.position = calculatePosition(event);
 
@@ -355,9 +372,34 @@ export default {
       ctx.fillStyle = this.color;
       clearCanvas(canvas);
       const mainCtx = this.$refs.mainCanvas.getContext("2d");
-      // console.log(
-      //   mainCtx.isPointInPath(this.mouse.position.x, this.mouse.position.y)
-      // );
+     
+      let selectedHistory = this.history.filter((entry) => entry.selected === true);
+
+      if (selectedHistory.length) {
+        ctx.strokeStyle = '#F0F';
+        for (let entry of selectedHistory.values()) {
+          if (entry.name.toLowerCase() === 'bezier') {
+            const control_point_1 = new Circle(entry.points[1], 8);
+            const control_point_2 = new Circle(entry.points[2], 8);
+            ctx.stroke(control_point_1.path);
+            ctx.stroke(control_point_2.path);
+
+            if (event.buttons === 1) {
+              if (control_point_1.contains(this.mouse.position)) {
+                entry.points[1] = this.mouse.position;
+              }
+
+              if (control_point_2.contains(this.mouse.position)) {
+                entry.points[2] = this.mouse.position;
+              }
+            }
+          }
+          ctx.stroke(entry.getPath());
+        }
+        ctx.fillStyle = this.color;
+
+        
+      }
 
       if (this.isDrawing) {
         switch (activeTool) {
@@ -412,6 +454,17 @@ export default {
       }
 
       switch (activeTool) {
+        case "select":
+          for (let entry of this.history.values()) {
+            if (entry.contains(position)) {
+              entry.selected = true;      
+            }
+            else {
+              entry.selected = false;
+            }
+          }
+          this.redrawHistory();
+          break;
         case "line":
           this.drawing.points.push(position); // Set starting point.
 
@@ -456,26 +509,13 @@ export default {
           }
           break;
         case "bezier":
-          drawBezier(mainCtx);
+          this.drawing.points.push(position);
 
-          if (this.drawing.points.length >= 2) {
-            drawBezier(
-              mainCtx,
-              this.drawing.points[0],
-              this.drawing.points[1],
-              "stroke"
-            )
-            const bezierHistory = {
-              type: "bezier",
-              params: {
-                t: 0.5,
-                p0: this.drawing.points[0],
-                p3: this.drawing.points[1],
-              }
-            }
-            this.history.push(
-            
-            )
+          if (this.drawing.points.length >= 4) {
+            let bezier = new Bezier(this.drawing.points);
+            mainCtx.stroke(bezier.getPath());
+            this.history.push(bezier);
+            this.drawing.points = [];
           }
           break;
         default:
@@ -632,36 +672,6 @@ function adjustPixelColor(pixelValue, value) {
   }
 
   return pixelValue;
-}
-
-function bezierPoint(t, p0, p1, p2, p3) {
-  const cX = 3 * (p1.x - p0.x),
-      bX = 3 * (p2.x - p1.x) - cX,
-      aX = p3.x - p0.x - cX - bX;
-
-  const cY = 3 * (p1.y - p0.y),
-      bY = 3 * (p2.y - p1.y) - cY,
-      aY = p3.y - p0.y - cY - bY;
-
-  const x = (aX * Math.pow(t, 3)) + (bX * Math.pow(t, 2)) + (cX * t) + p0.x;
-  const y = (aY * Math.pow(t, 3)) + (bY * Math.pow(t, 2)) + (cY * t) + p0.y;
-
-  return {
-    x: x,
-    y: y,
-  }
-}
-
-function drawBezier(ctx, p0, p1, p2, p3) {
-  const accuracy = 0.01;
-
-  ctx.moveTo(p0.x, p0.y);
-  for (var i=0; i<1; i+=accuracy){
-     var p = bezierPoint(i, p0, p1, p2, p3);
-     ctx.lineTo(p.x, p.y);
-  }
-
-  ctx.stroke()
 }
 </script>
 
