@@ -66,7 +66,7 @@ export class Circle extends Shape {
 }
 
 export class Bezier extends Shape {
-    constructor(points, accuracy = 0.01) {
+    constructor(points, accuracy = 0.001) {
         super();
         this.name = 'Bezier';
         this.accuracy = accuracy;

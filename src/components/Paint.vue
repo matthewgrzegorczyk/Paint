@@ -90,14 +90,26 @@
         </li>
         <li :class="{ active: tabActive === 'bezier' }">
           <div class="tab-content">
-            <input placeholder="P0.X" type="text" v-model="bp0x">
-            <input placeholder="P0.Y" type="text" v-model="bp0y">
-            <input placeholder="P1.X" type="text" v-model="bp1x">
-            <input placeholder="P1.Y" type="text" v-model="bp1y">
-            <input placeholder="P2.X" type="text" v-model="bp2x">
-            <input placeholder="P2.Y" type="text" v-model="bp2y">
-            <input placeholder="P3.X" type="text" v-model="bp3x">
-            <input placeholder="P3.Y" type="text" v-model="bp3y">
+            <div>
+              P1
+              <input placeholder="P0.X" type="text" v-model="bezierPoints[0].x">
+              <input placeholder="P0.Y" type="text" v-model="bezierPoints[0].y">
+            </div>
+            <div>
+              P2
+              <input placeholder="P1.X" type="text" v-model="bezierPoints[1].x">
+              <input placeholder="P1.Y" type="text" v-model="bezierPoints[1].y">
+            </div>
+            <div>
+              P3
+              <input placeholder="P2.X" type="text" v-model="bezierPoints[2].x">
+              <input placeholder="P2.Y" type="text" v-model="bezierPoints[2].y">
+            </div>
+            <div>
+              P4
+              <input placeholder="P3.X" type="text" v-model="bezierPoints[3].x">
+              <input placeholder="P3.Y" type="text" v-model="bezierPoints[3].y">
+            </div>
             <button @click="drawBezier">Draw bezier</button>
           </div>
         </li>
@@ -133,11 +145,6 @@
 
 
 <script>
-/*
-TODO:
-Przesuwanie oraz zmiana rozmiaru kszałtów.
-*/
-
 import Converter from "./Converter.vue";
 import lena_full from "./../assets/len_full.jpg";
 import lena_std from "./../assets/len_std.jpg";
@@ -192,14 +199,13 @@ export default {
       rectY: 0,
       rectWidth: 0,
       rectHeight: 0,
-      bp0x: 0,
-      bp0y: 0,
-      bp1x: 0,
-      bp1y: 0,
-      bp2x: 0,
-      bp2y: 0,
-      bp3x: 0,
-      bp3y: 0,
+      bezierPoints: [
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+      ],
+      selectedBezier: null,
     };
   },
   methods: {
@@ -353,13 +359,35 @@ export default {
     redrawHistory() {
       const mainCtx = this.$refs.mainCanvas.getContext('2d');
       const helperCtx = this.$refs.helperCanvas.getContext('2d');
-      this.clearCanvas()
+      clearCanvas(this.$refs.mainCanvas);
+      clearCanvas(this.$refs.helperCanvas);
+      for (let entry of this.history.values()) {
+        if ( ! entry.selected ) {
+          let path = entry.getPath();
+          mainCtx.stroke(path);
+        }
+        else {
+          if (entry.name.toLowerCase() === 'bezier') {
+            helperCtx.strokeStyle = '#F0F';
+            const control_point_1 = new Circle(entry.points[1], 8);
+            const control_point_2 = new Circle(entry.points[2], 8);
+            helperCtx.stroke(control_point_1.path);
+            helperCtx.stroke(control_point_2.path);
+            helperCtx.stroke(entry.getPath());
 
-      let deselectedHistory = this.history.filter((entry) => entry.selected === false);
-      for (let entry of deselectedHistory.values()) {
-        let path = entry.getPath();
-        mainCtx.stroke(path);
+            if (event.buttons === 1) {
+              if (control_point_1.contains(this.mouse.position)) {
+                entry.points[1] = this.mouse.position;
+              }
+
+              if (control_point_2.contains(this.mouse.position)) {
+                entry.points[2] = this.mouse.position;
+              }
+            }
+          }
+        }
       }
+      helperCtx.strokeStyle = this.color;
     },
     onMouseMove: function(event) {
       this.mouse.position = calculatePosition(event);
@@ -396,9 +424,10 @@ export default {
           }
           ctx.stroke(entry.getPath());
         }
-        ctx.fillStyle = this.color;
-
-        
+        ctx.fillStyle = this.color;        
+      }
+      else {
+        this.selectedBezier = null;
       }
 
       if (this.isDrawing) {
@@ -411,7 +440,6 @@ export default {
               );
               ctx.stroke(line);
             }
-            // console.log(this.drawing.points[0], this.mouse.position);
             break;
           case "elipsis":
             const radius = distance(
@@ -457,7 +485,12 @@ export default {
         case "select":
           for (let entry of this.history.values()) {
             if (entry.contains(position)) {
-              entry.selected = true;      
+              entry.selected = true;
+
+              if (entry.name.toLowerCase() === 'bezier') {
+                this.selectedBezier = entry;
+                console.log(entry);
+              }
             }
             else {
               entry.selected = false;
@@ -527,6 +560,8 @@ export default {
     },
     clearCanvas: function() {
       clearCanvas(this.$refs.mainCanvas);
+      clearCanvas(this.$refs.helperCanvas);
+      this.history = [];
     },
     imageDraw: function() {
       this.loadImage(lena_std);
@@ -571,14 +606,26 @@ export default {
       );
     },
     drawBezier: function() {
-      const p0 = {x: this.bp0x, y: this.bp0y},
-      p1 = {x: this.bp1x, y: this.bp1y},
-      p2 = {x: this.bp2x, y: this.bp2y},
-      p3 = {x: this.bp3x, y: this.bp3y};
-
       const mainCtx = this.$refs.mainCanvas.getContext("2d");
 
-      drawBezier(mainCtx, p0, p1, p2, p3);
+      const bezier = new Bezier(this.bezierPoints);
+      mainCtx.stroke(bezier.getPath());
+      this.history.push(bezier);
+    }
+  },
+  watch: {
+    selectedBezier: function(newVal, oldVal) {
+      if (newVal && newVal.points) {
+        this.bezierPoints = newVal.points;
+      }
+      else {
+        this.bezierPoints = [
+          {x: 0, y: 0},
+          {x: 0, y: 0},
+          {x: 0, y: 0},
+          {x: 0, y: 0},
+        ];
+      }
     }
   }
 };
